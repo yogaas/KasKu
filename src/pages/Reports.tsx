@@ -38,7 +38,7 @@ export default function Reports() {
   
   const expenseData = expenseCategories.map(category => {
     const total = (transactions || [])
-      .filter(t => t.categoryId === category.id && t.type === 'expense')
+      .filter(t => t.category_id === category.id && t.transaction_type === 'expense')
       .reduce((acc, t) => acc + (t.amount || 0), 0);
     
     return {

@@ -25,31 +25,46 @@ export interface Category {
 
 export interface Transaction {
   id: string;
-  date: string;
-  categoryId: string;
-  walletId: string;
-  type: TransactionType;
+  user_id: string;
+  wallet_id: string;
+  category_id: string;
+  transaction_type: TransactionType;
   amount: number;
-  notes: string;
-  status: TransactionStatus;
+  title: string;
+  notes?: string;
+  transaction_date: string;
+  attachment_url?: string;
+  latitude?: number;
+  longitude?: number;
+  is_deleted: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Budget {
   id: string;
-  categoryId: string;
+  user_id: string;
+  category_id: string;
   amount: number;
-  spent: number;
-  month: string;
+  start_date: string;
+  end_date: string;
+  alert_percentage?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Goal {
   id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: string;
-  color: string;
-  icon: string;
+  user_id: string;
+  wallet_id?: string;
+  title: string;
+  description?: string;
+  target_amount: number;
+  current_amount: number;
+  target_date?: string;
+  is_completed: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Debt {

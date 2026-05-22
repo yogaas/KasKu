@@ -1,22 +1,42 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader } from '../components/ui/Card';
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardFooter } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { useTransactions } from '../hooks/useTransactions';
+import { useTransactions, useDeleteTransaction } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { useWallets } from '../hooks/useWallets';
-import { Search, Plus, Filter, MoreHorizontal, ArrowDownRight, ArrowUpRight, Loader2, ListOrdered } from 'lucide-react';
+import { Search, Plus, ArrowDownRight, ArrowUpRight, Loader2, ListOrdered, Pencil, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageHeader } from '../components/shared/PageHeader';
 import { ErrorState } from '../components/shared/ErrorState';
 import { EmptyState } from '../components/shared/EmptyState';
+import { TransactionModal } from '../components/TransactionModal';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { Transaction } from '../types';
+import toast from 'react-hot-toast';
 
 export default function Transactions() {
-  const { data: transactions, isLoading: loadingTrx, error: errorTrx, refetch } = useTransactions();
-  const { data: categories, isLoading: loadingCat } = useCategories();
-  const { data: wallets, isLoading: loadingWallets } = useWallets();
+  const { data: transactions, isLoading: loadingTrx, error: errorTrx, refetch: refetchTrx } = useTransactions();
+  const { data: categories, isLoading: loadingCat, refetch: refetchCat } = useCategories();
+  const { data: wallets, isLoading: loadingWallets, refetch: refetchWallets } = useWallets();
+  const deleteTransaction = useDeleteTransaction();
 
+  // Search and Filter State
   const [search, setSearch] = useState('');
+  const [filterDate, setFilterDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+
+  // Sort State
+  const [sortField, setSortField] = useState<keyof Transaction>('transaction_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
   const isLoading = loadingTrx || loadingCat || loadingWallets;
 
@@ -38,25 +58,140 @@ export default function Transactions() {
         <ErrorState 
           title="Failed to load transactions" 
           message={errorTrx.message}
-          onRetry={refetch}
+          onRetry={() => {
+            refetchTrx();
+            refetchCat();
+            refetchWallets();
+          }}
         />
       </div>
     );
   }
 
-  const filteredTransactions = transactions?.filter(trx => 
-    trx.notes?.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  const handleAddNew = () => {
+    setTransactionToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (trx: Transaction) => {
+    setTransactionToEdit(trx);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setTransactionToDelete(id);
+  };
+
+  const confirmDelete = () => {
+    if (!transactionToDelete) return;
+    
+    deleteTransaction.mutate(transactionToDelete, {
+      onSuccess: () => {
+        toast.success('Transaksi berhasil dihapus.');
+        setTransactionToDelete(null);
+      },
+      onError: (err: any) => {
+        toast.error(`Gagal menghapus: ${err.message || 'Terjadi kesalahan sistem'}`);
+        setTransactionToDelete(null);
+      }
+    });
+  };
+
+  const handleSort = (field: keyof Transaction) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIcon = (field: keyof Transaction) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
+
+  // Process data (Filter -> Sort -> Paginate)
+  let processedData = transactions || [];
+
+  // 1. Filter
+  processedData = processedData.filter(trx => {
+    const matchSearch = String(trx.title || '').toLowerCase().includes(search.toLowerCase()) || 
+                        String(trx.notes || '').toLowerCase().includes(search.toLowerCase());
+    
+    let matchDate = true;
+    if (filterDate) {
+      const trxDate = trx.transaction_date ? format(new Date(trx.transaction_date), 'yyyy-MM-dd') : '';
+      matchDate = trxDate === filterDate;
+    }
+
+    return matchSearch && matchDate;
+  });
+
+  // 2. Sort
+  processedData.sort((a, b) => {
+    let aValue: any = a[sortField];
+    let bValue: any = b[sortField];
+
+    if (sortField === 'category_id') {
+      aValue = categories?.find(c => c.id === a.category_id)?.name || '';
+      bValue = categories?.find(c => c.id === b.category_id)?.name || '';
+    } else if (sortField === 'wallet_id') {
+      aValue = wallets?.find(w => w.id === a.wallet_id)?.name || '';
+      bValue = wallets?.find(w => w.id === b.wallet_id)?.name || '';
+    }
+
+    if (aValue === bValue) return 0;
+    if (aValue == null) return sortDirection === 'asc' ? -1 : 1;
+    if (bValue == null) return sortDirection === 'asc' ? 1 : -1;
+
+    if (sortField === 'amount') {
+      aValue = Number(aValue);
+      bValue = Number(bValue);
+    } else if (sortField === 'transaction_date') {
+      aValue = new Date(aValue as string).getTime();
+      bValue = new Date(bValue as string).getTime();
+    } else {
+      aValue = String(aValue).toLowerCase();
+      bValue = String(bValue).toLowerCase();
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // 3. Paginate
+  const totalPages = Math.ceil(processedData.length / itemsPerPage);
+  const paginatedData = processedData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
+      <TransactionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        transactionToEdit={transactionToEdit}
+      />
+
+      <ConfirmModal
+        isOpen={!!transactionToDelete}
+        title="Hapus Transaksi"
+        message="Apakah Anda yakin ingin menghapus transaksi ini? Transaksi yang dihapus akan mempengaruhi saldo dompet terkait."
+        onConfirm={confirmDelete}
+        onCancel={() => setTransactionToDelete(null)}
+        isLoading={deleteTransaction.isPending}
+      />
+
       <PageHeader 
         title="Transactions" 
         description="Manage your incoming and outgoing transactions."
         action={{
           label: "Add Transaction",
           icon: <Plus className="w-4 h-4" />,
-          onClick: () => {}
+          onClick: handleAddNew
         }}
       />
 
@@ -67,24 +202,47 @@ export default function Transactions() {
           description="Record your first transaction to start tracking your money."
           action={{
             label: "Add Transaction",
-            onClick: () => {}
+            onClick: handleAddNew
           }}
         />
       ) : (
         <Card>
           <CardHeader className="p-4 sm:px-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="max-w-sm w-full">
+              <div className="flex items-center gap-2 max-w-xl w-full">
                 <Input 
-                  placeholder="Search notes..." 
+                  placeholder="Search transactions..." 
                   icon={<Search className="w-4 h-4" />}
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full"
                 />
+                <div className="flex items-center gap-2 max-w-[200px]">
+                  <Input 
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => {
+                      setFilterDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
+                  {filterDate && (
+                    <button 
+                      onClick={() => {
+                        setFilterDate('');
+                        setCurrentPage(1);
+                      }}
+                      className="p-2 text-muted-foreground hover:text-foreground"
+                      title="Clear Date Filter"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-              <Button variant="outline" className="gap-2 w-full sm:w-auto">
-                <Filter className="w-4 h-4" /> Filter
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -92,54 +250,135 @@ export default function Transactions() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-muted-foreground bg-muted/50 uppercase border-y">
                   <tr>
-                    <th className="px-6 py-3 font-medium">Transaction</th>
-                    <th className="px-6 py-3 font-medium">Category</th>
-                    <th className="px-6 py-3 font-medium">Wallet</th>
-                    <th className="px-6 py-3 font-medium">Date</th>
-                    <th className="px-6 py-3 font-medium text-right">Amount</th>
+                    <th 
+                      className="px-6 py-3 font-medium cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('title')}
+                    >
+                      <div className="flex items-center">Transaction {renderSortIcon('title')}</div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 font-medium cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('category_id')}
+                    >
+                      <div className="flex items-center">Category {renderSortIcon('category_id')}</div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 font-medium cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('wallet_id')}
+                    >
+                      <div className="flex items-center">Wallet {renderSortIcon('wallet_id')}</div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 font-medium cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('transaction_date')}
+                    >
+                      <div className="flex items-center">Date {renderSortIcon('transaction_date')}</div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('amount')}
+                    >
+                      <div className="flex items-center justify-end">Amount {renderSortIcon('amount')}</div>
+                    </th>
                     <th className="px-6 py-3 font-medium text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredTransactions.map((trx) => {
-                    const category = categories?.find(c => c.id === trx.categoryId);
-                    const wallet = wallets?.find(w => w.id === trx.walletId);
-                    const isIncome = trx.type === 'income';
+                  {paginatedData.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                        Tidak ada transaksi ditemukan.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedData.map((trx) => {
+                      const category = categories?.find(c => c.id === trx.category_id);
+                      const wallet = wallets?.find(w => w.id === trx.wallet_id);
+                      const isIncome = trx.transaction_type === 'income';
 
-                    return (
-                      <tr key={trx.id} className="bg-card hover:bg-accent/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${isIncome ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
-                              {isIncome ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                      return (
+                        <tr key={trx.id} className="bg-card hover:bg-accent/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${isIncome ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                                {isIncome ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                              </div>
+                              <div>
+                                <div className="font-medium whitespace-nowrap">{trx.title}</div>
+                                {trx.notes && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{trx.notes}</div>}
+                              </div>
                             </div>
-                            <span className="font-medium whitespace-nowrap">{trx.notes}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {category ? (
-                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${category.color}20`, color: category.color }}>
-                              {category.name}
-                            </span>
-                          ) : <span className="text-muted-foreground">-</span>}
-                        </td>
-                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{wallet?.name || '-'}</td>
-                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{trx.date ? format(new Date(trx.date), 'MMM dd, yyyy') : '-'}</td>
-                        <td className={`px-6 py-4 text-right font-semibold whitespace-nowrap ${isIncome ? 'text-primary' : ''}`}>
-                          {isIncome ? '+' : '-'}Rp {trx.amount?.toLocaleString('id-ID') || 0}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button className="text-muted-foreground hover:text-foreground">
-                            <MoreHorizontal className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {category ? (
+                              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${category.color}20`, color: category.color }}>
+                                {category.name}
+                              </span>
+                            ) : <span className="text-muted-foreground">-</span>}
+                          </td>
+                          <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{wallet?.name || '-'}</td>
+                          <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{trx.transaction_date ? format(new Date(trx.transaction_date), 'MMM dd, yyyy HH:mm') : '-'}</td>
+                          <td className={`px-6 py-4 text-right font-semibold whitespace-nowrap ${isIncome ? 'text-primary' : ''}`}>
+                            {isIncome ? '+' : '-'}Rp {trx.amount?.toLocaleString('id-ID') || 0}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                className="text-muted-foreground hover:text-primary transition-colors p-1"
+                                onClick={() => handleEdit(trx)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button 
+                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                onClick={() => handleDeleteClick(trx.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           </CardContent>
+          <CardFooter className="py-4 border-t flex flex-col sm:flex-row items-center justify-between text-sm gap-4">
+            <span className="text-muted-foreground w-full sm:w-auto text-center sm:text-left">
+              Menampilkan {processedData.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} hingga {Math.min(currentPage * itemsPerPage, processedData.length)} dari {processedData.length} data
+            </span>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1 || processedData.length === 0}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.max(1, totalPages) }).map((_, i) => (
+                  <button
+                    key={i}
+                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${currentPage === i + 1 ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || processedData.length === 0}
+              >
+                Next <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </CardFooter>
         </Card>
       )}
     </div>
