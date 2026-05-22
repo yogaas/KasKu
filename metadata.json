@@ -1,0 +1,6 @@
+{
+  "name": "FinDash - Modern Fintech Dashboard",
+  "description": "A comprehensive, modern finance management dashboard built with clean architecture, supporting wallets, budgets, transactions, and goals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
