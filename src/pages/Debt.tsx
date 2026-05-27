@@ -56,8 +56,11 @@ export default function Debt() {
         <div className="grid gap-6 md:grid-cols-2">
           {debts.map((debt) => {
             const isPayable = debt.type === 'payable';
-            const remaining = (debt.totalAmount || 0) - (debt.paidAmount || 0);
-            const percent = Math.min(((debt.paidAmount || 0) / (debt.totalAmount || 1)) * 100, 100);
+            const total = debt.totalAmount || (debt as any).amount || (debt as any).total_amount || 0;
+            const paid = debt.paidAmount || (debt as any).paid_amount || 0;
+            const remaining = total - paid;
+            const percent = Math.min((paid / (total || 1)) * 100, 100);
+            const dueDate = debt.dueDate || (debt as any).due_date;
 
             return (
               <Card key={debt.id}>
@@ -74,7 +77,7 @@ export default function Debt() {
                     </div>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-medium ${isPayable ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-                    Due: {debt.dueDate ? format(new Date(debt.dueDate), 'MMM dd') : 'N/A'}
+                    Due: {dueDate ? format(new Date(dueDate), 'MMM dd') : 'N/A'}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -85,13 +88,13 @@ export default function Debt() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
-                      <p className="font-medium">Rp {debt.totalAmount?.toLocaleString('id-ID') || 0}</p>
+                      <p className="font-medium">Rp {total.toLocaleString('id-ID')}</p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-medium">
-                      <span className="text-muted-foreground">Paid: Rp {debt.paidAmount?.toLocaleString('id-ID') || 0}</span>
+                      <span className="text-muted-foreground">Paid: Rp {paid.toLocaleString('id-ID')}</span>
                       <span className={isPayable ? 'text-destructive' : 'text-primary'}>{Math.round(percent)}%</span>
                     </div>
                     <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">

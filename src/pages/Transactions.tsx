@@ -12,6 +12,7 @@ import { ErrorState } from '../components/shared/ErrorState';
 import { EmptyState } from '../components/shared/EmptyState';
 import { TransactionModal } from '../components/TransactionModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { Pagination } from '../components/shared/Pagination';
 import { Transaction } from '../types';
 import toast from 'react-hot-toast';
 
@@ -345,40 +346,13 @@ export default function Transactions() {
               </table>
             </div>
           </CardContent>
-          <CardFooter className="py-4 border-t flex flex-col sm:flex-row items-center justify-between text-sm gap-4">
-            <span className="text-muted-foreground w-full sm:w-auto text-center sm:text-left">
-              Menampilkan {processedData.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} hingga {Math.min(currentPage * itemsPerPage, processedData.length)} dari {processedData.length} data
-            </span>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1 || processedData.length === 0}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Prev
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.max(1, totalPages) }).map((_, i) => (
-                  <button
-                    key={i}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${currentPage === i + 1 ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                    onClick={() => setCurrentPage(i + 1)}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages || processedData.length === 0}
-              >
-                Next <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </CardFooter>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={processedData.length}
+            onPageChange={setCurrentPage}
+          />
         </Card>
       )}
     </div>

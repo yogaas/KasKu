@@ -30,7 +30,6 @@ export default function Register() {
       }
 
       if (data.user) {
-        // Automatically insert into profiles table as requested
         const { error: profileError } = await supabase.from('profiles').insert([
           {
             id: data.user.id,
@@ -43,11 +42,8 @@ export default function Register() {
 
         if (profileError) {
           console.error("Failed to insert profile:", profileError);
-          // Don't throw, just let them login if the user was created successfully
         }
 
-        // Supabase sign up might auto login or require email confirmation depending on settings
-        // Assuming auto-login is on or they can just go to login page
         navigate('/');
       }
     } catch (err: any) {
@@ -58,52 +54,74 @@ export default function Register() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="bg-destructive/10 text-destructive p-3 rounded-md flex items-center gap-2 text-sm">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <p>{error}</p>
+    <div className="flex flex-col h-full justify-center space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Create Account</h2>
+        <p className="text-gray-500 text-sm">Join FinFlow Pro today and master your wealth.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 text-sm border border-red-100">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-700 tracking-wide">Full Name</label>
+          <Input 
+            type="text" 
+            placeholder="John Doe" 
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required 
+            icon={<User className="w-4 h-4" />} 
+            className="bg-gray-50 border-gray-200 h-11 focus-visible:ring-emerald-500 rounded-lg text-sm"
+          />
         </div>
-      )}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Full Name</label>
-        <Input 
-          type="text" 
-          placeholder="John Doe" 
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          required 
-          icon={<User className="w-4 h-4" />} 
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Email address</label>
-        <Input 
-          type="email" 
-          placeholder="john@example.com" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required 
-          icon={<Mail className="w-4 h-4" />} 
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Password</label>
-        <Input 
-          type="password" 
-          placeholder="••••••••" 
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required 
-          icon={<Lock className="w-4 h-4" />} 
-        />
-      </div>
-      <Button type="submit" className="w-full" isLoading={isLoading}>
-        Create Account
-      </Button>
-      <p className="text-center text-sm text-muted-foreground mt-4">
-        Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
-      </p>
-    </form>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-700 tracking-wide">Email Address</label>
+          <Input 
+            type="email" 
+            placeholder="john@example.com" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required 
+            icon={<Mail className="w-4 h-4" />} 
+            className="bg-gray-50 border-gray-200 h-11 focus-visible:ring-emerald-500 rounded-lg text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-700 tracking-wide">Password</label>
+          <Input 
+            type="password" 
+            placeholder="••••••••" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required 
+            icon={<Lock className="w-4 h-4" />} 
+            className="bg-gray-50 border-gray-200 h-11 focus-visible:ring-emerald-500 rounded-lg text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-700 tracking-wide">Activation Code</label>
+          <Input 
+            type="text" 
+            placeholder="JKHU-JKBN-SDNE-EJKS-SBDB" 
+            value={password}
+            onChange={(e) => {}}
+            required 
+            icon={<Lock className="w-4 h-4" />} 
+            className="bg-gray-50 border-gray-200 h-11 focus-visible:ring-emerald-500 rounded-lg text-sm"
+          />
+        </div>
+        <Button type="submit" className="w-full bg-[#0b8a51] hover:bg-[#0a7a48] text-white h-11 rounded-lg font-semibold shadow-md shadow-emerald-600/20 mt-4" isLoading={isLoading}>
+          Create Account
+        </Button>
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Already have an account? <Link to="/login" className="font-semibold text-[#0b8a51] hover:underline">Sign in</Link>
+        </p>
+      </form>
+    </div>
   );
 }

@@ -1,21 +1,25 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useWallets, useDeleteWallet } from '../hooks/useWallets';
-import { Plus, Building2, Wallet as WalletIcon, Coins, ArrowRightLeft, Loader2, CreditCard, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Building2, Wallet as WalletIcon, Coins, ArrowRightLeft, Loader2, CreditCard, Pencil, Trash2, ArrowUpRight } from 'lucide-react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { ErrorState } from '../components/shared/ErrorState';
 import { EmptyState } from '../components/shared/EmptyState';
 import { WalletModal } from '../components/WalletModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { TransferModal } from '../components/TransferModal';
 import { Wallet } from '../types';
 import toast from 'react-hot-toast';
 
 export default function Wallets() {
+  const navigate = useNavigate();
   const { data: wallets, isLoading, error, refetch } = useWallets();
   const deleteWallet = useDeleteWallet();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [walletToEdit, setWalletToEdit] = useState<Wallet | null>(null);
   const [walletToDelete, setWalletToDelete] = useState<string | null>(null);
 
@@ -96,13 +100,18 @@ export default function Wallets() {
         isLoading={deleteWallet.isPending}
       />
 
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Wallets</h1>
           <p className="text-muted-foreground">Manage your accounts and balances.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setIsTransferModalOpen(true)}>
             <ArrowRightLeft className="w-4 h-4" /> Transfer
           </Button>
           <Button className="gap-2" onClick={handleAddNew}>
@@ -136,7 +145,7 @@ export default function Wallets() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {wallets.map((wallet) => (
-            <Card key={wallet.id} className="hover:shadow-md transition-shadow group relative overflow-hidden">
+            <Card key={wallet.id} className="hover:shadow-md transition-shadow group relative overflow-hidden cursor-pointer" onClick={() => navigate(`/wallets/${wallet.id}`)}>
               {/* Dynamic border top based on wallet color */}
               <div className="absolute top-0 inset-x-0 h-1" style={{ backgroundColor: wallet.color }}></div>
               <CardHeader className="flex flex-row items-start justify-between pb-2 pt-6">
@@ -176,6 +185,10 @@ export default function Wallets() {
               </CardHeader>
               <CardContent className="pt-4">
                 <p className="text-2xl font-bold">Rp {wallet.current_balance?.toLocaleString('id-ID') || 0}</p>
+                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground pt-3 border-t">
+                  <span>Klik card untuk melihat riwayat aktivitas</span>
+                  <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -67,6 +67,31 @@ export interface Goal {
   updated_at?: string;
 }
 
+export interface WalletTransfer {
+  id: string;
+  user_id: string;
+  from_wallet_id: string;
+  to_wallet_id: string;
+  amount: number;
+  notes?: string;
+  transfer_date: string;
+  created_at?: string;
+}
+
+export interface WalletLog {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  transaction_id: string | null;
+  wallet_transfer_id: string | null;
+  log_type: 'PLUS' | 'MIN';
+  amount: number;
+  balance_before: number;
+  balance_after: number;
+  notes: string;
+  created_at?: string;
+}
+
 export interface Debt {
   id: string;
   type: 'payable' | 'receivable';

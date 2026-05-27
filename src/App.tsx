@@ -13,6 +13,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Wallets from './pages/Wallets';
+import WalletDetails from './pages/WalletDetails';
 import Budgets from './pages/Budgets';
 import Goals from './pages/Goals';
 import Debt from './pages/Debt';
@@ -40,6 +41,7 @@ export default function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/wallets" element={<Wallets />} />
+                <Route path="/wallets/:id" element={<WalletDetails />} />
                 <Route path="/budgets" element={<Budgets />} />
                 <Route path="/goals" element={<Goals />} />
                 <Route path="/debt" element={<Debt />} />
